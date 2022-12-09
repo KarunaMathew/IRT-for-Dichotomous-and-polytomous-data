@@ -1,0 +1,486 @@
+# importing libraries
+rm(list = ls())
+library(MASS)
+library(msm)
+library(polycor)
+library(ltm)
+library(pcIRT)
+library(stats4)
+library(lattice)
+library(mirt)
+library(survival)
+library(ggplot2)
+library(lattice)
+library(Formula)
+library(Hmisc)
+library(EstCRM)
+library(psych)
+library(tidyverse)
+library(shiny)
+
+# dichotomous data-1
+# reading the table
+IRTdich<-read.table("C:/Users/karun/Downloads/Dicht_Data2.csv",header=T, sep=",")
+# eliminating first 3 columns
+my_data<-IRTdich[3:62]
+head(my_data)
+# rename the columns
+names(my_data) <- c('c1','c2','c3','c4','c5','c6','c7','c8','c9','c10','c11','c12','c13','c14','c15','c16','c17','c18','c19',
+                    'c20','c21','c22','c23','c24','c25','c26','c27','c28','c29','c30','c31','c32','c33','c34','c35','c36','c37',
+                    'c38','c39','c40','c41','c42','c43','c44','c45','c46','c47','c48','c49','c50','c51','c52','c53','c54','c55',
+                    'c56','c57','c58','c59','c60')
+my_data
+descript(my_data)
+summary(my_data)
+cronbach.alpha(my_data, CI = TRUE, B = 100)
+omega(my_data)
+
+# Rasch
+unimodel <- 'F1 = 1-60'
+
+fitRasch <- mirt(data = my_data, 
+               model = unimodel,  # alternatively, we could also just specify model = 1 in this case
+               itemtype = "Rasch", 
+               verbose = FALSE)
+fitRasch
+summary(fitRasch)
+paramsRasch <- coef(fitRasch, IRTpars = TRUE, simplify = TRUE)
+round(paramsRasch$items, 2) # g = c = guessing parameter
+M2(fitRasch)
+itemfit(fitRasch)
+itemfit(fitRasch, fit_stats = "infit") # typical for Rasch modeling
+coef(fitRasch,prob=TRUE, order=TRUE)
+
+#itemfitPlot(fit3PL)
+personfit(fitRasch) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+# plotting
+plot(fitRasch, type = 'trace')
+plot(fitRasch, type = 'infotrace')
+plot(fitRasch, type = 'infotrace', facet_items=F)
+plot(fitRasch, type = 'info') 
+plot(fitRasch, type = 'infoSE')
+
+score <- fscores(fitRasch)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+# into two sections
+subset1 <- my_data %>%
+  select(c2, c10, c3, c4, c7, c11, c13, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, 
+         c30, c55, c5, c57, c58, c58, c59, c60)
+subset2 <- my_data %>%
+  select(c6, c8, c5, c1, c9, c12, c14, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, 
+         c47, c48, c49, c50, c51, c52, c53, c54 )
+
+test1 <- mirt(subset1, 1, itemtype = "Rasch", verbose = F)
+test2 <- mirt(subset2, 1, itemtype = "Rasch", verbose = F)
+cor.test(fscores(test1), fscores(fitRasch))
+cor.test(fscores(test2), fscores(fitRasch))
+
+# 2PL
+fit2PL <- mirt(my_data, 1, itemtype = "2PL", verbose = F)
+fit2PL
+summary(fit2PL)
+paramsRasch <- coef(fit2PL, IRTpars = TRUE, simplify = TRUE)
+#round(params2PL$items, 2) # g = c = guessing parameter
+M2(fit2PL)
+itemfit(fit2PL)
+itemfit(fit2PL, fit_stats = "infit") # typical for Rasch modeling
+#itemfitPlot(fit2PL)
+personfit(fit2PL) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+coef(fit2PL,prob=TRUE, order=TRUE)
+
+# plotting
+plot(fit2PL, type = 'trace')
+plot(fit2PL, type = 'infotrace')
+plot(fit2PL, type = 'infotrace', facet_items=F)
+plot(fit2PL, type = 'info') 
+plot(fit2PL, type = 'infoSE')
+
+score <- fscores(fit2PL)
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+anova(fit2PL, fitRasch)
+coef(fit2PL, IRTpars = TRUE, simplify = TRUE)
+
+# 3PL
+fit3PL <- mirt(my_data, 1, itemtype = "3PL", verbose = T)
+fit3PL
+anova(fit3PL, fit2PL)
+coef(fit3PL, IRTpars = TRUE, simplify = TRUE)
+
+summary(fit3PL)
+params3PL <- coef(fit3PL, IRTpars = TRUE, simplify = TRUE)
+round(params3PL$items, 2) # g = c = guessing parameter
+M2(fit3PL)
+itemfit(fit3PL)
+itemfit(fit3PL, fit_stats = "infit") # typical for Rasch modeling
+
+plot(fit3PL, type = 'trace')
+plot(fit3PL, type = 'infotrace')
+plot(fit3PL, type = 'infotrace', facet_items=F)
+plot(fit3PL, type = 'info') 
+plot(fit3PL, type = 'infoSE')
+#itemfitPlot(fit3PL)
+personfit(fit3PL) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+
+score <- fscores(fit3PL)
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+# other 
+model<-mirt(my_data,
+             1,              # unidimensional model
+             itemtype='Rasch')
+
+for (i in 1:length(my_data)) {
+  Itemplot<-itemfit(model,
+                    group.bins=15,
+                    empirical.plot=i,
+                    empirical.CI = .95,
+                    method = 'ML')
+  print(Itemplot)
+}
+
+latent_score<-as.vector(fscores(model))
+latent_score
+sum_score<-apply(my_data,1,sum)
+score_measures<-data.frame(my_data[2],sum_score,
+                           latent_score)
+
+plot(score_measures$c2,
+     score_measures$latent_score)
+
+     
+
+plot(score_measures$c2,
+     score_measures$sum_score)
+     
+cor(score_measures$c2,score_measures$latent_score)
+cor(score_measures$c2,score_measures$sum_score)
+
+summary(model)
+
+model1<-mirt(my_data,
+             1,              # unidimensional model
+             itemtype='2PL')
+
+for (i in 1:length(my_data)) {
+  Itemplot<-itemfit(model1,
+                    group.bins=15,
+                    empirical.plot=i,
+                    empirical.CI = .95,
+                    method = 'ML')
+  print(Itemplot)
+}
+
+latent_score<-as.vector(fscores(model1))
+latent_score
+sum_score<-apply(my_data,1,sum)
+score_measures<-data.frame(my_data[3],sum_score,
+                          latent_score)
+
+plot(score_measures$c3,
+     score_measures$latent_score)
+
+plot(score_measures$c3,
+     score_measures$sum_score)
+
+cor(score_measures$c3,score_measures$sum_score)
+cor(score_measures$c3,score_measures$latent_score)
+
+summary(model1)
+
+model2<-mirt(my_data,
+             1,              # unidimensional model
+             itemtype='3PL')
+
+for (i in 1:length(my_data)) {
+  Itemplot<-itemfit(model2,
+                    group.bins=15,
+                    empirical.plot=i,
+                    empirical.CI = .95,
+                    method = 'ML')
+  print(Itemplot)
+}
+
+latent_score<-as.vector(fscores(model2))
+latent_score
+sum_score<-apply(my_data,1,sum)
+score_measures<-data.frame(my_data[3],sum_score,
+                           latent_score)
+
+plot(score_measures$c3,
+     score_measures$latent_score)
+
+plot(score_measures$c3,
+     score_measures$sum_score)
+
+cor(score_measures$c3,score_measures$sum_score)
+cor(score_measures$c3,score_measures$latent_score)
+
+summary(model2)
+
+anova(model,model1)
+anova(model,model2)
+anova(model1,model2)
+
+model_coefs <- coef(model1,
+                    simplify = T,
+                    IRTpars = T)
+model_coefs # c40, c36, c4 very discriminant ability
+            # difficult item is c52, c54
+
+library(WrightMap)
+wrightMap(latent_score, model_coefs$items[,2]) # item29, 56 really hard
+
+
+## item level
+plot(model1, type = 'trace') # item charecteristic curve for each model, item response fn
+plot(model1, type = 'infotrace') # c40 gives high informations, then c47, c36, c4 (how much 
+                                 # information items gives you) item40 have really 
+                                 # high discrimination and it gives highly information as well.
+                                 # c47,c36, c40, c4 are the main contributers of the information 
+                                 # in this measurement.
+plot(model1, type = 'infotrace', facet_items=F) # item 40 is high peaking up
+
+## test level
+plot(model1, type = 'info') # total combined test information, summation of all previous item 
+                            # information. if we summarise all the item information we end up
+                            # with the test information.we can see where the test is measuring
+                            # the accurate information.  
+plot(model1, type = 'infoSE') # we get the standard error measurement. 
+
+## comparison
+library(tidyverse)
+library(ggplot2)
+
+newdata <- read.table("C:/Users/karun/Downloads/PLAA_Dec15_IRT.csv",header=T, sep=",")
+newdata
+
+data <- bind_rows(my_data, newdata)
+data
+
+group <- c(rep("Group 1", nrow(my_data)),
+           rep("Group 2", nrow((newdata))))
+
+apply(data, 2, table, exclude= NULL )
+
+mymodel <- mirt(data,
+                1,
+                itemtype='2PL')
+
+student_IRT_score <- fscores(mymodel)
+student_sum_score <- apply(data, 1, sum, na.rm = T)
+
+test_comp <- data.frame(group, 
+                        student_IRT_score,
+                        student_sum_score)
+
+colnames(test_comp)
+ggplot(test_comp, aes(x=F1,
+                      y=student_sum_score,
+                      color=group))+ 
+  geom_point()
+
+for (i in 1:length(data)) {
+  Itemplot<-itemfit(mymodel,
+                    group.bins=15,
+                    empirical.plot=i,
+                    empirical.CI = .95,
+                    method = 'ML')
+  print(Itemplot)
+}
+################################################################################
+# dichotomous data-2
+my_data<-read.table("C:/Users/karun/Downloads/PLAA_Dec15_IRT.csv",header=T, sep=",")
+
+data1<-descript(my_data)
+data1
+plot(data1)
+cronbach.alpha(my_data, CI = TRUE, B = 100)
+my_data
+omega(my_data)
+
+summary(omega(my_data, plot = F))
+uniDich.model1 <- mirt.model("rotation = 1 - 14")
+uniDich.result1 <- mirt::mirt(my_data, uniDich.model1, itemtype = "Rasch", SE = TRUE)
+M2(uniDich.result1)
+itemfit(uniDich.result1)
+residuals(uniDich.result1, df.p = T)
+head(personfit(uniDich.result1))
+coef(uniDich.result1,simplify = TRUE, IRTpar = TRUE)$items
+plot(uniDich.result1, type = "trace", theta_lim = c(-4,4))
+plot(uniDich.result1, type = "infotrace")
+itemplot(uniDich.result1, item = 1, type = "trace", CE = TRUE)
+plot(uniDich.result1, type = "infoSE")
+
+
+fit1 <- rasch(my_data, constraint = cbind(length(my_data)+1,1))
+summary(fit1)
+
+# details from pdf v17i05
+coef(fit1,prob=TRUE, order=TRUE)
+GoF.rasch(fit1, B = 19)
+margins(fit1)
+
+
+fit2 <- rasch(my_data)
+summary(fit2)
+anova(fit1, fit2)
+margins(fit2, type = "three-way", nprint = 2)
+
+fit3 <- ltm(my_data ~ z1)
+summary(fit3)
+
+anova(fit2, fit3) # p value is significant, which suggests that Model 3 is a significantly better fit than Model 2.
+# Model 2 is not necessarily better, but Model 3 is significantly better. This means that the fit of the
+# model is improved by estimating the discriminatory ability of each individual item.
+
+
+
+fit4 <- tpm(my_data, type="rasch", max.guessing = 1)
+summary(fit4)
+
+anova(fit3, fit4)
+
+plot(fit3,
+     legend = TRUE,
+     cx = "bottomright",
+     lwd = 3,
+     cex.main = 1.5,
+     cex.lab = 1.3,
+     cex = 0.8)
+
+plot(fit3,
+     legend = TRUE,
+     cx = "topright",
+     cex = 0.8,
+     type = "IIC",
+     annot = FALSE,
+     lwd = 3,
+     cex.main = 1.5,
+     cex.lab = 1.3)
+
+plot(fit3,
+     type="IIC",
+     items = 0,
+     lwd = 3,
+     cex.main = 1.5,
+     cex.lab = 1.3)
+
+fit1 <- ltm(my_data ~ z1 + z2)
+fit2 <- ltm(my_data ~ z1 * z2)
+anova(fit1, fit2)
+fit2
+
+factor.scores(fit2)
+rcor.test(my_data, method = "kendall")
+##############################################################################################################
+unimodel <- 'F1 = 1-14'
+
+fitRasch <- mirt(data = my_data, 
+                 model = unimodel,  # alternatively, we could also just specify model = 1 in this case
+                 itemtype = "Rasch", 
+                 verbose = FALSE)
+fitRasch
+summary(fitRasch)
+paramsRasch <- coef(fitRasch, IRTpars = TRUE, simplify = TRUE)
+round(paramsRasch$items, 2) # g = c = guessing parameter
+M2(fitRasch)
+itemfit(fitRasch)
+itemfit(fitRasch, fit_stats = "infit") # typical for Rasch modeling
+coef(fitRasch,prob=TRUE, order=TRUE)
+
+#itemfitPlot(fit3PL)
+personfit(fitRasch) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+# plotting
+plot(fitRasch, type = 'trace')
+plot(fitRasch, type = 'infotrace')
+plot(fitRasch, type = 'infotrace', facet_items=F)
+
+plot(fitRasch, type = 'info') 
+plot(fitRasch, type = 'infoSE')
+
+score <- fscores(fitRasch)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+# into two sections
+subset1 <- my_data %>%
+  select(c2, c10, c3, c4, c7, c11, c13, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, 
+         c30, c55, c5, c57, c58, c58, c59, c60)
+subset2 <- my_data %>%
+  select(c6, c8, c5, c1, c9, c12, c14, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, 
+         c47, c48, c49, c50, c51, c52, c53, c54 )
+
+test1 <- mirt(subset1, 1, itemtype = "Rasch", verbose = F)
+test2 <- mirt(subset2, 1, itemtype = "Rasch", verbose = F)
+cor.test(fscores(test1), fscores(fitRasch))
+cor.test(fscores(test2), fscores(fitRasch))
+
+# 2PL
+fit2PL <- mirt(my_data, 1, itemtype = "2PL", verbose = F)
+fit2PL
+summary(fit2PL)
+paramsRasch <- coef(fit2PL, IRTpars = TRUE, simplify = TRUE)
+round(params2PL$items, 2) # g = c = guessing parameter
+M2(fit2PL)
+itemfit(fit2PL)
+itemfit(fit2PL, fit_stats = "infit") # typical for Rasch modeling
+#itemfitPlot(fit2PL)
+personfit(fit2PL) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+coef(fit2PL,prob=TRUE, order=TRUE)
+
+# plotting
+plot(fit2PL, type = 'trace')
+plot(fit2PL, type = 'infotrace')
+plot(fit2PL, type = 'infotrace', facet_items=F)
+
+plot(fit2PL, type = 'info') 
+plot(fit2PL, type = 'infoSE')
+
+score <- fscores(fit2PL)
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+anova(fit2PL, fitRasch)
+coef(fit2PL, IRTpars = TRUE, simplify = TRUE)
+
+# 3PL
+fit3PL <- mirt(my_data, 1, itemtype = "3PL", verbose = T)
+fit3PL
+anova(fit3PL, fit2PL)
+coef(fit3PL, IRTpars = TRUE, simplify = TRUE)
+
+summary(fit3PL)
+params3PL <- coef(fit3PL, IRTpars = TRUE, simplify = TRUE)
+round(params3PL$items, 2) # g = c = guessing parameter
+M2(fit3PL)
+itemfit(fit3PL)
+itemfit(fit3PL, fit_stats = "infit") # typical for Rasch modeling
+
+plot(fit3PL, type = 'trace')
+plot(fit3PL, type = 'infotrace')
+plot(fit3PL, type = 'infotrace', facet_items=F)
+plot(fit3PL, type = 'info') 
+plot(fit3PL, type = 'infoSE')
+#itemfitPlot(fit3PL)
+personfit(fit3PL) %>%
+  summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
+            outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
+
+
