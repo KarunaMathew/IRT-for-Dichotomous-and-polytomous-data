@@ -1,0 +1,135 @@
+# importing libraries
+rm(list = ls())
+library(MASS)
+library(msm)
+library(polycor)
+library(ltm)
+library(pcIRT)
+library(stats4)
+library(lattice)
+library(mirt)
+library(survival)
+library(ggplot2)
+library(lattice)
+library(Formula)
+library(Hmisc)
+library(EstCRM)
+library(psych)
+
+# reading the table
+my_data<-read.table("C:/Users/karun/Downloads/PLAA_Dec15_Scaled_V2.csv",header=T, sep=",")
+rcor.test(my_data, method = "kendall")
+str(my_data)
+descript(my_data)
+summary(my_data)
+omega(my_data)
+cronbach.alpha(my_data, CI = TRUE, B = 100)
+
+# Partial Credit Model
+polymodel1=mirt(my_data, model=1,itemtype="Rasch")
+summary(polymodel1) ## standardized coefficients
+coef(polymodel1, IRTpars=T)## coefficients
+AIC(polymodel1)
+fitrasch <- mirt(my_data,1 , itemtype = "Rasch")
+fitrasch
+M2(fitRasch)
+
+plot(polymodel1,type="trace") ## curves for all items at once
+itemplot(polymodel1,1,type="trace") # IIC for item 3
+itemplot(polymodel1,1,type="info")
+plot(polymodel1,type="info") ## test information curve
+plot(polymodel1) ## expected score curve
+fscores(polymodel1) ## factor scores
+itemfit(polymodel1) ## item fit statistics
+personfit(polymodel1) ## person fit statistics
+
+score <- fscores(fitRasch)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+# General Partial credit Model
+polymodel2=mirt(my_data, model=1,itemtype="gpcm")
+summary(polymodel2) ## standardized coefficients
+coef(polymodel2, IRTpars=T)## coefficients
+AIC(polymodel2)
+fitgpcm <- mirt(my_data, 2, itemtype = "gpcm") # less AIC value
+fitgpcm
+M2(fitgpcm)
+
+plot(polymodel2,type="trace") ## curves for all items at once
+itemplot(polymodel2,3,type="trace") # IIC for item 3
+itemplot(polymodel2,1,type="info")
+plot(polymodel2,type="info") ## test information curve
+plot(polymodel2) ## expected score curve
+fscores(polymodel2) ## factor scores
+itemfit(polymodel2) ## item fit statistics
+personfit(polymodel2) ## person fit statistics
+
+score <- fscores(fitgpcm)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+biserial.cor(rowSums(fitgpcm), fitgpcm[[1]])
+
+# sum findings from python
+bootCRM(data=my_data,
+        max.item=c(3236,1865,1948,2056,1536,1454,1814,1455,1799,1983,1820,699,1667,1307,967),
+        min.item=c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+        max.EMCycle=200,
+        converge=.01,
+        nsample=3)
+
+# Graded Response Model
+polymodel3=mirt(my_data, model=1,itemtype="graded")
+summary(polymodel3)
+coef(polymodel3, IRTpars=T)
+itemplot(polymodel3,3,type="trace")
+plot(polymodel3,type="trace")
+itemplot(polymodel3,1,type="info")
+plot(polymodel3,type="trace")
+plot(polymodel3,type="info")
+plot(polymodel3)
+fscores(polymodel3)
+itemfit(polymodel3)
+personfit(polymodel3)
+AIC(polymodel3)
+fitGraded <- mirt(my_data, 1, itemtype = "graded")
+fitGraded
+M2(fitGraded)
+
+score <- fscores(fitGraded)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+# Nominal Response Model
+polymodel4=mirt(my_data, model=1,itemtype="nominal")
+summary(polymodel4)
+coef(polymodel4, IRTpars=T)
+itemplot(polymodel4,3,type="trace")
+itemplot(polymodel4,1,type="info")
+plot(polymodel4,type="trace")
+plot(polymodel4,type="info")
+plot(polymodel4)
+fscores(polymodel4)
+itemfit(polymodel4)
+personfit(polymodel4)
+AIC(polymodel4)
+
+score <- fscores(fitnominal)
+score
+sumscore <- rowSums(my_data)
+cor.test(score, sumscore)
+
+fitnominal <- mirt(my_data, 1, itemtype = "nominal")
+fitnominal
+M2(fitnominal)
+
+anova(polymodel1,polymodel2)
+anova(polymodel1,polymodel3)
+anova(polymodel1,polymodel4)
+anova(polymodel2,polymodel3)
+anova(polymodel2,polymodel4)
+anova(polymodel3,polymodel4)
+
