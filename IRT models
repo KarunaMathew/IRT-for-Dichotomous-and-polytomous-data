@@ -18,6 +18,7 @@ library(psych)
 library(tidyverse)
 library(shiny)
 
+# DICHOTOMOUS MODELS
 # dichotomous data-1
 # reading the table
 IRTdich<-read.table("C:/Users/karun/Downloads/Dicht_Data2.csv",header=T, sep=",")
@@ -483,4 +484,5 @@ personfit(fit3PL) %>%
   summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
             outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
 
+# POLYTOMOUS MODELS
 
