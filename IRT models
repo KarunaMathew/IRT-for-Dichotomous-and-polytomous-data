@@ -484,5 +484,18 @@ personfit(fit3PL) %>%
   summarize(infit.outside = prop.table(table(z.infit > 1.96 | z.infit < -1.96)),
             outfit.outside = prop.table(table(z.outfit > 1.96 | z.outfit < -1.96))) # lower row = non-fitting people
 
-# POLYTOMOUS MODELS
+# PCA for first Data 1
+pca = prcomp(my_data,scale.=TRUE)
+pca
+print(pca$sd^2)
+var = 100*((pca$sd)^2)/(sum((pca$sd)^2)) 
+var 
+cumsum(var)
+ggplot(NULL,aes(x=1:60,y=var))+ 
+    geom_col()+ 
+ggtitle("Scree plot for 60 columns")+ 
+xlab("PC")+ 
+ylab("% var explained") 
+
+
 
